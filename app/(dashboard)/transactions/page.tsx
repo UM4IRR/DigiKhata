@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { Plus, Filter, Search, ArrowUpRight, ArrowDownRight, Pencil, Trash2, X, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useLanguage } from '@/lib/context/LanguageContext'
 
 interface Tx {
   _id: string
@@ -22,11 +24,13 @@ const CAT_ICONS: Record<string, string> = {
   Entertainment: '🎬', Travel: '✈️',
 }
 
-function fmt(n: number, currency = 'PKR') {
-  return new Intl.NumberFormat('en-PK', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n)
+function fmt(n: number, currency = 'PKR', locale = 'en-PK') {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(n)
 }
 
 export default function TransactionsPage() {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('PKR')
@@ -52,6 +56,7 @@ export default function TransactionsPage() {
 
   useEffect(() => { load() }, [])
 
+  const locale = language === 'ur' ? 'ur-PK' : 'en-PK'
   const filtered = transactions.filter(t => {
     if (typeFilter !== 'all' && t.type !== typeFilter) return false
     if (catFilter !== 'All' && t.category !== catFilter) return false
@@ -63,10 +68,10 @@ export default function TransactionsPage() {
   const expense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
 
   const deleteTx = async (id: string) => {
-    if (isDemo) { toast.error('Demo mode: connect MongoDB to delete'); return }
-    if (!confirm('Delete this transaction?')) return
+    if (isDemo) { toast.error(t('demo_mode_desc')); return }
+    if (!confirm(t('delete_confirm'))) return
     await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
-    toast.success('Transaction deleted')
+    toast.success(t('transaction_deleted'))
     setTransactions(prev => prev.filter(t => t._id !== id))
   }
 
@@ -75,60 +80,60 @@ export default function TransactionsPage() {
       {isDemo && (
         <div className="demo-banner">
           <span>⚡</span>
-          <span><b>Demo Mode</b> — connect MongoDB to add/edit/delete transactions.</span>
+          <span>{t('demo_mode_desc')}</span>
         </div>
       )}
 
       <div className="page-header">
         <div>
-          <h1 className="page-title">Transactions</h1>
-          <p className="page-subtitle">{transactions.length} total · {fmt(income, currency)} in · {fmt(expense, currency)} out</p>
+          <h1 className="page-title">{t('transactions')}</h1>
+          <p className="page-subtitle">{transactions.length} {t('all')} · {fmt(income, currency, locale)} {t('income')} · {fmt(expense, currency, locale)} {t('expense')}</p>
         </div>
         <button className="btn btn-primary" onClick={() => { setEditTx(null); setShowModal(true) }} id="add-transaction-btn">
-          <Plus size={16} /> Add Transaction
+          <Plus size={16} /> {t('add_transaction')}
         </button>
       </div>
 
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Filtered Income</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)' }}>{fmt(income, currency)}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>{t('filtered_income')}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--success)' }}>{fmt(income, currency, locale)}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Filtered Expenses</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>{fmt(expense, currency)}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>{t('filtered_expenses')}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>{fmt(expense, currency, locale)}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>Net</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 6 }}>{t('net')}</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: income - expense >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-            {fmt(income - expense, currency)}
+            {fmt(income - expense, currency, locale)}
           </div>
         </div>
       </div>
 
       {/* Filters */}
       <div className="card" style={{ padding: '14px 18px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', flexDirection: language === 'ur' ? 'row-reverse' : 'row' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <Search size={14} style={{ position: 'absolute', left: language === 'ur' ? 'auto' : 10, right: language === 'ur' ? 10 : 'auto', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               className="input"
-              style={{ paddingLeft: 32, fontSize: 13 }}
-              placeholder="Search transactions…"
+              style={{ paddingLeft: language === 'ur' ? 12 : 32, paddingRight: language === 'ur' ? 32 : 12, fontSize: 13 }}
+              placeholder={t('search_transactions')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               id="transaction-search"
             />
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {(['all', 'income', 'expense'] as const).map(t => (
+            {(['all', 'income', 'expense'] as const).map(f => (
               <button
-                key={t}
-                className={`btn btn-sm ${typeFilter === t ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setTypeFilter(t)}
+                key={f}
+                className={`btn btn-sm ${typeFilter === f ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setTypeFilter(f)}
               >
-                {t === 'all' ? 'All' : t === 'income' ? '📈 Income' : '📉 Expense'}
+                {t(f)}
               </button>
             ))}
           </div>
@@ -136,13 +141,13 @@ export default function TransactionsPage() {
             className={`btn btn-sm ${showFilters ? 'btn-primary' : 'btn-outline'}`}
             onClick={() => setShowFilters(!showFilters)}
           >
-            <Filter size={13} /> Filters
+            <Filter size={13} /> {t('filter')}
           </button>
         </div>
         {showFilters && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-2)' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>Category</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-2)', textAlign: language === 'ur' ? 'right' : 'left' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>{t('category')}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flexDirection: language === 'ur' ? 'row-reverse' : 'row' }}>
               {CATEGORIES.map(c => (
                 <button
                   key={c}
@@ -150,7 +155,7 @@ export default function TransactionsPage() {
                   onClick={() => setCatFilter(c)}
                   style={{ fontSize: 12 }}
                 >
-                  {c !== 'All' ? CAT_ICONS[c] : ''} {c}
+                  {c !== 'All' ? CAT_ICONS[c] : ''} {c === 'All' ? t('all') : c}
                 </button>
               ))}
             </div>
@@ -167,57 +172,52 @@ export default function TransactionsPage() {
         ) : filtered.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
-            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>No transactions found</div>
-            <div style={{ fontSize: 13 }}>Try adjusting your filters or add a new transaction</div>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{t('no_transactions')}</div>
+            <div style={{ fontSize: 13 }}>{t('add_transactions_chart')}</div>
           </div>
         ) : (
           <table className="data-table">
             <thead>
-              <tr>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Date</th>
-                <th>Payment</th>
-                <th style={{ textAlign: 'right' }}>Amount</th>
-                <th>Actions</th>
+              <tr style={{ textAlign: language === 'ur' ? 'right' : 'left' }}>
+                <th style={{ textAlign: language === 'ur' ? 'right' : 'left' }}>{t('category')}</th>
+                <th>{t('description')}</th>
+                <th>{t('date')}</th>
+                <th>{t('payment_method')}</th>
+                <th style={{ textAlign: language === 'ur' ? 'left' : 'right' }}>{t('amount')}</th>
+                <th>{t('settings')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
                 <tr key={tx._id}>
                   <td>
-                    <span className={`badge badge-${tx.type === 'income' ? 'income' : 'expense'}`}>
-                      {tx.type === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                      {tx.type}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: language === 'ur' ? 'row-reverse' : 'row' }}>
+                      <span className={`badge badge-${tx.type === 'income' ? 'income' : 'expense'}`}>
+                        {tx.type === 'income' ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                      </span>
+                      <span style={{ fontSize: 13 }}>{CAT_ICONS[tx.category] || '📦'} {tx.category}</span>
+                    </div>
                   </td>
-                  <td>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13 }}>
-                      <span>{CAT_ICONS[tx.category] || '📦'}</span>
-                      {tx.category}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                  <td style={{ color: 'var(--text-secondary)', fontSize: 13, textAlign: language === 'ur' ? 'right' : 'left' }}>
                     {tx.description || '—'}
                   </td>
                   <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                    {new Date(tx.date).toLocaleDateString('en-PK', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {new Date(tx.date).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </td>
                   <td>
                     <span className="badge badge-neutral" style={{ textTransform: 'capitalize', fontSize: 11 }}>
-                      {tx.paymentMethod}
+                      {t(tx.paymentMethod, { defaultValue: tx.paymentMethod })}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: tx.type === 'income' ? 'var(--success)' : 'var(--danger)' }}>
-                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount, currency)}
+                  <td style={{ textAlign: language === 'ur' ? 'left' : 'right', fontWeight: 700, color: tx.type === 'income' ? 'var(--success)' : 'var(--danger)' }}>
+                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount, currency, locale)}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         className="btn btn-ghost btn-icon btn-sm"
                         onClick={() => { setEditTx(tx); setShowModal(true) }}
-                        title="Edit"
+                        title={t('search')}
                       >
                         <Pencil size={13} />
                       </button>
@@ -225,7 +225,6 @@ export default function TransactionsPage() {
                         className="btn btn-ghost btn-icon btn-sm"
                         style={{ color: 'var(--danger)' }}
                         onClick={() => deleteTx(tx._id)}
-                        title="Delete"
                       >
                         <Trash2 size={13} />
                       </button>
@@ -245,18 +244,20 @@ export default function TransactionsPage() {
           isDemo={isDemo}
           onClose={() => setShowModal(false)}
           onSaved={() => { setShowModal(false); load() }}
+          t={t}
         />
       )}
     </div>
   )
 }
 
-function TxModal({ tx, currency, isDemo, onClose, onSaved }: {
+function TxModal({ tx, currency, isDemo, onClose, onSaved, t }: {
   tx: Tx | null
   currency: string
   isDemo: boolean
   onClose: () => void
   onSaved: () => void
+  t: any
 }) {
   const isEdit = !!tx
   const [form, setForm] = useState({
@@ -273,9 +274,9 @@ function TxModal({ tx, currency, isDemo, onClose, onSaved }: {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isDemo) { toast.error('Demo mode: connect MongoDB'); return }
+    if (isDemo) { toast.error(t('demo_mode_desc')); return }
     const amt = parseFloat(form.amount)
-    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return }
+    if (!amt || amt <= 0) { toast.error(t('field_required')); return }
     setLoading(true)
     try {
       const body = { ...form, amount: amt }
@@ -284,7 +285,7 @@ function TxModal({ tx, currency, isDemo, onClose, onSaved }: {
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
-      toast.success(isEdit ? 'Transaction updated!' : 'Transaction added!')
+      toast.success(isEdit ? t('transaction_updated') : t('add_transaction'))
       onSaved()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed')
@@ -297,33 +298,33 @@ function TxModal({ tx, currency, isDemo, onClose, onSaved }: {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">{isEdit ? 'Edit Transaction' : 'Add Transaction'}</h2>
+          <h2 className="modal-title">{isEdit ? t('edit_transaction') : t('add_transaction')}</h2>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}><X size={18} /></button>
         </div>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Type toggle */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {(['income', 'expense'] as const).map(t => (
+            {(['income', 'expense'] as const).map(f => (
               <button
-                key={t}
+                key={f}
                 type="button"
-                className={`btn btn-sm ${form.type === t ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => set('type', t)}
+                className={`btn btn-sm ${form.type === f ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => set('type', f)}
                 style={{ justifyContent: 'center' }}
               >
-                {t === 'income' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {f === 'income' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                {t(f)}
               </button>
             ))}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="input-group">
-              <label className="input-label">Amount ({currency}) *</label>
+              <label className="input-label">{t('amount')} ({currency}) *</label>
               <input className="input" type="number" min="0.01" step="0.01" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} autoFocus />
             </div>
             <div className="input-group">
-              <label className="input-label">Category</label>
+              <label className="input-label">{t('category')}</label>
               <select className="input" value={form.category} onChange={e => set('category', e.target.value)}>
                 {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{CAT_ICONS[c]} {c}</option>)}
               </select>
@@ -331,27 +332,27 @@ function TxModal({ tx, currency, isDemo, onClose, onSaved }: {
           </div>
 
           <div className="input-group">
-            <label className="input-label">Description</label>
-            <input className="input" placeholder="What was this for?" value={form.description} onChange={e => set('description', e.target.value)} />
+            <label className="input-label">{t('description')}</label>
+            <input className="input" placeholder={t('description') + '...'} value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="input-group">
-              <label className="input-label">Date</label>
+              <label className="input-label">{t('date')}</label>
               <input className="input" type="date" value={form.date} onChange={e => set('date', e.target.value)} />
             </div>
             <div className="input-group">
-              <label className="input-label">Payment Method</label>
+              <label className="input-label">{t('payment_method')}</label>
               <select className="input" value={form.paymentMethod} onChange={e => set('paymentMethod', e.target.value)}>
-                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{t(m)}</option>)}
               </select>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-            <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>{t('cancel')}</button>
             <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>
-              {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <><Plus size={16} />{isEdit ? 'Update' : 'Add'}</>}
+              {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <><Plus size={16} />{isEdit ? t('change') : t('add')}</>}
             </button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from '@/lib/context/ThemeContext'
+import { LanguageProvider } from '@/lib/context/LanguageContext'
 
 export const metadata: Metadata = {
   title: 'Digital Khata — Smart Finance Tracker',
@@ -25,20 +26,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap"
           rel="stylesheet"
         />
       </head>
       <body>
-        <ThemeProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            richColors
-            expand={false}
-            toastOptions={{ style: { fontFamily: 'Inter, sans-serif', fontSize: '14px' } }}
-          />
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              richColors
+              expand={false}
+              toastOptions={{ style: { fontFamily: 'Inter, sans-serif', fontSize: '14px' } }}
+            />
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   )

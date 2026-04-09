@@ -6,6 +6,8 @@ import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, Plus, ArrowRight } fr
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
+import { useTranslation } from 'react-i18next'
+import { useLanguage } from '@/lib/context/LanguageContext'
 
 interface Tx {
   _id: string
@@ -23,11 +25,11 @@ const CAT_ICONS: Record<string, string> = {
   Entertainment: '🎬', Travel: '✈️',
 }
 
-function fmt(amount: number, currency = 'PKR') {
-  return new Intl.NumberFormat('en-PK', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
+function fmt(amount: number, currency = 'PKR', locale = 'en-PK') {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount)
 }
 
-function groupByMonth(transactions: Tx[]) {
+function groupByMonth(transactions: Tx[], locale = 'en') {
   const map: Record<string, { income: number; expense: number }> = {}
   transactions.forEach(tx => {
     const d = new Date(tx.date)
@@ -39,13 +41,15 @@ function groupByMonth(transactions: Tx[]) {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6)
     .map(([key, val]) => ({
-      month: new Date(key + '-01').toLocaleDateString('en', { month: 'short' }),
+      month: new Date(key + '-01').toLocaleDateString(locale, { month: 'short' }),
       ...val,
       net: val.income - val.expense,
     }))
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const [transactions, setTransactions] = useState<Tx[]>([])
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState('PKR')
@@ -62,12 +66,13 @@ export default function DashboardPage() {
     }).finally(() => setLoading(false))
   }, [])
 
+  const locale = language === 'ur' ? 'ur-PK' : 'en-PK'
   const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
   const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
   const balance = income - expense
   const savingsRate = income > 0 ? Math.round(((income - expense) / income) * 100) : 0
 
-  const chartData = groupByMonth(transactions)
+  const chartData = groupByMonth(transactions, language)
   const recent = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6)
 
   if (loading) {
@@ -86,39 +91,39 @@ export default function DashboardPage() {
       {isDemo && (
         <div className="demo-banner">
           <span>⚡</span>
-          <span>You&apos;re in <b>Demo Mode</b> — connect MongoDB to save real data. All writes are disabled.</span>
+          <span>{t('demo_mode_desc')}</span>
         </div>
       )}
 
       {/* Stats */}
       <div className="stats-grid">
         <StatCard
-          title="Total Balance"
-          value={fmt(balance, currency)}
+          title={t('total_balance')}
+          value={fmt(balance, currency, locale)}
           icon="💰"
           colorClass="stat-indigo"
-          sub={`Savings rate: ${savingsRate}%`}
+          sub={`${t('savings_rate')}: ${savingsRate}%`}
         />
         <StatCard
-          title="Total Income"
-          value={fmt(income, currency)}
+          title={t('total_income')}
+          value={fmt(income, currency, locale)}
           icon="📈"
           colorClass="stat-emerald"
-          sub={`${transactions.filter(t => t.type === 'income').length} transactions`}
+          sub={`${transactions.filter(t => t.type === 'income').length} ${t('transactions')}`}
         />
         <StatCard
-          title="Total Expenses"
-          value={fmt(expense, currency)}
+          title={t('total_expenses')}
+          value={fmt(expense, currency, locale)}
           icon="📉"
           colorClass="stat-rose"
-          sub={`${transactions.filter(t => t.type === 'expense').length} transactions`}
+          sub={`${transactions.filter(t => t.type === 'expense').length} ${t('transactions')}`}
         />
         <StatCard
-          title="Net Savings"
-          value={fmt(Math.max(0, balance), currency)}
+          title={t('net_savings')}
+          value={fmt(Math.max(0, balance), currency, locale)}
           icon="🎯"
           colorClass="stat-amber"
-          sub={balance >= 0 ? 'On track!' : 'Over budget'}
+          sub={balance >= 0 ? t('on_track') : t('over_budget')}
         />
       </div>
 
@@ -128,11 +133,11 @@ export default function DashboardPage() {
         <div className="card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>Income vs Expenses</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Last 6 months overview</div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{t('income_vs_expenses')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('overview_6mos')}</div>
             </div>
             <Link href="/transactions" className="btn btn-outline btn-sm">
-              View all <ArrowRight size={13} />
+              {t('view_all')} <ArrowRight size={13} />
             </Link>
           </div>
           {chartData.length > 0 ? (
@@ -154,10 +159,10 @@ export default function DashboardPage() {
                   tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} />
                 <Tooltip
                   contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }}
-                  formatter={(v: number) => [fmt(v, currency), '']}
+                  formatter={(v: any) => [fmt(Number(v) || 0, currency, locale), '']}
                 />
-                <Area type="monotone" dataKey="income" name="Income" stroke="#10b981" strokeWidth={2} fill="url(#colorIncome)" />
-                <Area type="monotone" dataKey="expense" name="Expense" stroke="#f43f5e" strokeWidth={2} fill="url(#colorExpense)" />
+                <Area type="monotone" dataKey="income" name={t('income')} stroke="#10b981" strokeWidth={2} fill="url(#colorIncome)" />
+                <Area type="monotone" dataKey="expense" name={t('expense')} stroke="#f43f5e" strokeWidth={2} fill="url(#colorExpense)" />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -168,16 +173,16 @@ export default function DashboardPage() {
         {/* Recent Transactions */}
         <div className="card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>Recent Transactions</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{t('recent_transactions')}</div>
             <Link href="/transactions" className="btn btn-ghost btn-sm" style={{ fontSize: 12 }}>
-              See all <ArrowRight size={13} />
+              {t('view_all')} <ArrowRight size={13} />
             </Link>
           </div>
 
           {recent.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 14 }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>📒</div>
-              No transactions yet
+              {t('no_transactions')}
             </div>
           ) : recent.map(tx => (
             <div key={tx._id} className="tx-item">
@@ -191,29 +196,29 @@ export default function DashboardPage() {
                   {tx.description || tx.category}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {tx.category} · {new Date(tx.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                  {tx.category} · {new Date(tx.date).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
                 </div>
               </div>
               <div style={{ fontWeight: 600, fontSize: 14, flexShrink: 0, color: tx.type === 'income' ? 'var(--success)' : 'var(--danger)' }}>
-                {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount, currency)}
+                {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount, currency, locale)}
               </div>
             </div>
           ))}
 
           <Link href="/transactions" className="btn btn-outline btn-sm" style={{ width: '100%', marginTop: 16, justifyContent: 'center' }}>
             <Plus size={14} />
-            Add Transaction
+            {t('add_transaction')}
           </Link>
         </div>
       </div>
 
       {/* Quick stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 20 }}>
-        <QuickStat title="Largest Expense" tx={transactions.filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount)[0]} currency={currency} type="expense" />
-        <QuickStat title="Largest Income" tx={transactions.filter(t => t.type === 'income').sort((a, b) => b.amount - a.amount)[0]} currency={currency} type="income" />
+        <QuickStat title={t('largest_expense')} tx={transactions.filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount)[0]} currency={currency} type="expense" locale={locale} />
+        <QuickStat title={t('largest_income')} tx={transactions.filter(t => t.type === 'income').sort((a, b) => b.amount - a.amount)[0]} currency={currency} type="income" locale={locale} />
         <div className="card" style={{ padding: 20 }}>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
-            Top Category
+            {t('top_category')}
           </div>
           {(() => {
             const byCategory: Record<string, number> = {}
@@ -221,7 +226,7 @@ export default function DashboardPage() {
               byCategory[t.category] = (byCategory[t.category] || 0) + t.amount
             })
             const sorted = Object.entries(byCategory).sort(([, a], [, b]) => b - a)
-            if (!sorted.length) return <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No data</div>
+            if (!sorted.length) return <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('no_transactions')}</div>
             const [name, total] = sorted[0]
             const pct = Math.round((total / expense) * 100)
             return (
@@ -230,13 +235,13 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 22 }}>{CAT_ICONS[name] || '📦'}</span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmt(total, currency)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmt(total, currency, locale)}</div>
                   </div>
                 </div>
                 <div className="progress-bar">
                   <div className="progress-fill" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f43f5e,#e11d48)' }} />
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{pct}% of expenses</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{pct}% {t('total_expenses')}</div>
               </>
             )
           })()}
@@ -259,7 +264,8 @@ function StatCard({ title, value, icon, colorClass, sub }: { title: string; valu
   )
 }
 
-function QuickStat({ title, tx, currency, type }: { title: string; tx: Tx | undefined; currency: string; type: 'income' | 'expense' }) {
+function QuickStat({ title, tx, currency, type, locale }: { title: string; tx: Tx | undefined; currency: string; type: 'income' | 'expense'; locale: string }) {
+  const { t } = useTranslation()
   return (
     <div className="card" style={{ padding: 20 }}>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px' }}>
@@ -272,16 +278,16 @@ function QuickStat({ title, tx, currency, type }: { title: string; tx: Tx | unde
             : <ArrowDownRight size={20} style={{ color: 'var(--danger)', flexShrink: 0 }} />}
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: type === 'income' ? 'var(--success)' : 'var(--danger)' }}>
-              {fmt(tx.amount, currency)}
+              {fmt(tx.amount, currency, locale)}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {tx.category} — {new Date(tx.date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+              {tx.category} — {new Date(tx.date).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}
             </div>
           </div>
         </div>
       ) : (
         <div style={{ color: 'var(--text-muted)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Wallet size={16} /> No data
+          <Wallet size={16} /> {t('no_transactions')}
         </div>
       )}
     </div>
@@ -289,10 +295,11 @@ function QuickStat({ title, tx, currency, type }: { title: string; tx: Tx | unde
 }
 
 function EmptyChart() {
+  const { t } = useTranslation()
   return (
     <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: 'var(--text-muted)' }}>
       <TrendingUp size={36} style={{ opacity: 0.3 }} />
-      <div style={{ fontSize: 14 }}>Add transactions to see your chart</div>
+      <div style={{ fontSize: 14 }}>{t('add_transactions_chart')}</div>
     </div>
   )
 }
